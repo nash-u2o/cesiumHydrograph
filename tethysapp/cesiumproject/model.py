@@ -14,7 +14,7 @@ def readDams():
 
     #Arrays for the JSON file that is passed to the JS file
     lat = []
-    long = []
+    long = [] 
     nameList = []
     Hylak_id = []
 
@@ -48,12 +48,32 @@ def getHydrographData(id):
     global dates
     #Index the Dates column 
     dates = jGraph['Dates']
-    weeklySum = 0
-    for value in jGraph[id]:
+    weeklySum = monthlySum = month = monthCount = weekCount = monthlyAverage = 0
+    tempMonth = 0
+    flag = False
+
+    for (value, date) in zip(jGraph[id], dates):
+        #running sum for weekly value
         weeklySum += value
+
+        #parse the date string to determine whether the month has changed
+        tempMonth = int(date[5:7])
+        if(tempMonth != month and weekCount != 0):
+            month = tempMonth
+            monthlyAverage += (monthlySum / weekCount)
+            monthlySum = value
+            weekCount = 1
+            monthCount += 1
+        else: 
+            monthlySum += value
+            weekCount += 1
+
+    monthlyAverage += (monthlySum / weekCount) #Factor the last month into the monthly average
+
+    monthlyAverage = monthlyAverage / monthCount
+
     weeklyAverage = weeklySum/len(jGraph[id])
-    print(weeklyAverage)
 
     #Return the column of values associated with the ID (y-axis) and the dates (x-axis)
-    return jGraph[id], dates
+    return jGraph[id], dates, [weeklyAverage, monthlyAverage]
 

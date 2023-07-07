@@ -86,6 +86,11 @@ $(function(){
                 //The object holds values which are keyed by indexes. Get the values in an array
                 var x_values = Object.values(x_axis_object);
                 var y_values = Object.values(y_axis_object);
+                
+                var weeklyAvg = data['averages'][0];
+                var monthlyAvg = data['averages'][1];
+                console.log(weeklyAvg);
+                console.log(monthlyAvg);
         
                 var plotData = {
                   x: x_values,
@@ -96,12 +101,16 @@ $(function(){
                 var header = document.getElementById('modal-header');
                 var id = document.getElementById('id-block');
                 var lonlat = document.getElementById('lonlat');
+                var week = document.getElementById('weekly-average');
+                var month = document.getElementById('monthly-average');
                 
                 //Configure the informtion for the modal
                 Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
                 header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
                 id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</>';
                 lonlat.innerHTML = '<h6>' + 'Coordinates: (' + viewer.selectedEntity.lon + ', ' + viewer.selectedEntity.lat + ')' + '</h6>';
+                week.innerHTML = '<h6>' + 'Weekly Average: ' + weeklyAvg + '</h6>';
+                month.innerHTML = '<h6>' + 'Monthly Average: ' + monthlyAvg + '</h6>';
                 resolve();
               });
   

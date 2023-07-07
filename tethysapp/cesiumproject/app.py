@@ -11,7 +11,7 @@ class Cesiumproject(TethysAppBase):
     icon = 'cesiumproject/images/icon.gif'
     package = 'cesiumproject'
     root_url = 'cesiumproject'
-    color = '#8e44ad'
+    color = '#C4CC96'
     description = ''
     tags = ''
     enable_feedback = False

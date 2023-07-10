@@ -61,8 +61,8 @@ $(function(){
           t: 30,
           pad: 0,
         },
-        width: window.innerWidth*.4,
-        height: window.innerHeight*.3,
+        width: window.innerWidth*.45,
+        height: 210,
         yaxis: {
           title: 'Surface Area (m^2)',
         },
@@ -73,6 +73,7 @@ $(function(){
   
       //Add an event to the viewer that detects if the selected entity changes. selectedEntityChanged is an event so we need to add a listener to that event
       //Make the selection modify the description and add a plotly graph to it
+      //Look for the class js-plotly-plot on the id. If it exists, you can reformat the graph instead of generating a new one
       viewer.selectedEntityChanged.addEventListener(function(){
         try{
             $.get(
@@ -120,6 +121,21 @@ $(function(){
         } catch {
           //Do nothing if there is not a selected entity or if there is any other issue
         }
+      });
+      
+      window.addEventListener('resize', () => {
+        plot = document.getElementById('figure');
+        if(plot.classList.contains('js-plotly-plot')){
+          Plotly.relayout(plot, {
+            width: document.getElementById('modal-header').offsetWidth,
+          });
+        }
+      });
+    });
+    
+    $('#exampleModal').on('shown.bs.modal', () => {
+      Plotly.relayout(document.getElementById('figure'),{
+        width: document.getElementById('modal-header').offsetWidth,
       });
     });
   });

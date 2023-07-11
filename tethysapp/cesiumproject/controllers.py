@@ -45,3 +45,7 @@ def csvJSON(request):
     res = JsonResponse(dataDict)
 
     return res
+
+def pdf(request):
+
+    return render(request, 'cesiumproject/pdf.html')

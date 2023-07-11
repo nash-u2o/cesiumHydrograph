@@ -18,27 +18,44 @@
         <div class="modal-body">
           <body>
             <p id="figure"></p>
-            <p id="item-info">
-              <h6 id='id-block'></h6>
-              <h6 id='lonlat'></h6>
-              <h6 id='weekly-average'></h6>
-              <h6 id='monthly-average'></h6>
-            </p>
+            <div id="item-info">
+              <div class='row'>
+              <div class='column'>
+                <h6 id='id-block'></h6>
+                <h6 id='lonlat'></h6>
+                <h6 id='continent'></h6>
+                <h6 id='country'></h6>
+                <h6 id='volume'></h6>
+                <h6 id='src'></h6>
+                <h6 id='dis'></h6>
+                <h6 id='elevation'></h6>
+                <h6 id='wshd'></h6>
+              </div>
+              <div class='column'>
+                <h6 id='pLongLat'></h6>
+                <h6 id='area'></h6>
+                <h6 id='length'></h6>
+                <h6 id='dev'></h6>
+                <h6 id='res'></h6>
+                <h6 id='depth'></h6>
+                <h6 id='time'></h6>
+                <h6 id='slope'></h6>
+            </div>
+          </div>
           </body>
         </div>
         <div class="modal-footer">
+          <button type='button' class='btn btn-default' id='csv-button'>CSV</button>
+          <button type="button" class="btn btn-default" id="pdf-button">PDF</button>
           <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
   </div>
 </body>
-  
 {% endblock %}
 
-{% block app_actions %}
-  {{ block.super }}
-{% endblock %}
+{% block app_actions_override %}{% endblock %}
 
 {% block content_dependent_styles%}
   {{block.super}}

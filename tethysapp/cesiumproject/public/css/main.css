@@ -80,3 +80,14 @@
 .modal-open {
     z-index: 1000 !important /*does nothing*/
 }
+
+.row {
+    column-count: 2;
+    align-content: flex-end;
+    display: flex;
+    justify-content: space-between;
+}
+
+.column {
+    width: 49%;
+}

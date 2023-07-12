@@ -226,12 +226,17 @@ $(function(){
       var properties = viewer.selectedEntity.properties;
       var propertyArray = viewer.selectedEntity.properties.propertyNames;
       var textArray = []
-      for(let i = 0; i < propertyArray.length; i++){
+      for(let i = 0; i < propertyArray.length - 2; i++){
         textArray.push(propertyArray[i] + ': ' + String(Object.values(properties[propertyArray[i]])[0]));
       } 
       pdf.setFont('Times-Roman');
       pdf.text(textArray, 20, 20);
-      pdf.output('dataurlnewwindow');
+      //pdf.addImage(Plotly.toImage(document.getElementById('figure'), {format: 'png', width: 400, height: 300}), 'PNG', 200, 200, 400, 300);
+      Plotly.toImage(document.getElementById('figure'), {format: 'jpeg', width: 400, height: 300}).then(function(dataUrl) {
+        pdf.addImage(dataUrl, 'JPEG', 75, 65, 125, 75);
+        pdf.output('dataurlnewwindow');
+      });
+      
     });
 
     $('#csv-button').click(() => {

@@ -14,5 +14,8 @@
 /tethysapp_cesiumproject.egg-info/PKG-INFO filter=lfs diff=lfs merge=lfs -text
 *.txt filter=lfs diff=lfs merge=lfs -text
 /tethysapp_cesiumproject.egg-info/not-zip-safe filter=lfs diff=lfs merge=lfs -text
+/tethysapp/cesiumproject/polygons/DoD[[:space:]]SAFE-7bEwu4DkBM7HUoYZ/Cesium_stuff filter=lfs diff=lfs merge=lfs -text
+*.cpg filter=lfs diff=lfs merge=lfs -text
+*.qpj filter=lfs diff=lfs merge=lfs -text
 * !text !filter !merge !diff
 *.geojson filter=lfs diff=lfs merge=lfs -text

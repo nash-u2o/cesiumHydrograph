@@ -236,7 +236,6 @@ $(function(){
         pdf.addImage(dataUrl, 'JPEG', 75, 65, 125, 75);
         pdf.output('dataurlnewwindow');
       });
-      
     });
 
     $('#csv-button').click(() => {

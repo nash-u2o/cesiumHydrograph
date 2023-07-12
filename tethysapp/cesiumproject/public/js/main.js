@@ -61,6 +61,8 @@ $(function(){
           elevation: elevationList[i],
           slope: slopeList[i],
           wshd: wshdList[i],
+          dates: [],
+          values: [],
         },
         point: 
           {
@@ -117,12 +119,14 @@ $(function(){
               //Our data is in a JSON - parse it to get the object
               var x_axis_object = JSON.parse(data['dateList']);
               var y_axis_object = JSON.parse(data['hydroPoints']);
+
               //The object holds values which are keyed by indexes. Get the values in an array
               var x_values = Object.values(x_axis_object);
               var y_values = Object.values(y_axis_object);
               
-              //var weeklyAvg = data['averages'][0];
-              //var monthlyAvg = data['averages'][1];
+              //Store the graph data in the entity to use it in the creation of a CSV
+              viewer.selectedEntity.properties['dates'] = x_values;
+              viewer.selectedEntity.properties['values'] = y_values;
 
       
               var plotData = {
@@ -158,7 +162,7 @@ $(function(){
               Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
               header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
               id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</h6>';
-              lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lon'] + ', ' + properties['lat'] + ')' + '</h6>';
+              lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lat'] + ', ' + properties['lon'] + ')' + '</h6>';
               //week.innerHTML = '<h6>' + 'Weekly Average: ' + weeklyAvg + '</h6>';
               //month.innerHTML = '<h6>' + 'Monthly Average: ' + monthlyAvg + '</h6>';
               continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
@@ -168,7 +172,7 @@ $(function(){
               dis.innerHTML = '<h6>' + 'Dis: ' + properties['dis'] + '</h6>';
               elevation.innerHTML = '<h6>' + 'Elevation: ' + properties['elevation'] + '</h6>';
               wshd.innerHTML = '<h6>' + 'Watershed: ' + properties['wshd'] + '</h6>';
-              pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLong']+ ', ' + properties['pourLat'] + ')' + '</h6>';
+              pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLat']+ ', ' + properties['pourLong'] + ')' + '</h6>';
               area.innerHTML = '<h6>' + 'Area: ' + properties['area'] + '</h6>';
               length.innerHTML = '<h6>' + 'Length: ' + properties['len'] + '</h6>';
               dev.innerHTML = '<h6>' + 'Dev: ' + properties['dev'] + '</h6>';
@@ -212,33 +216,52 @@ $(function(){
       });
     });
 
+    //Allows the reselection of a point after closing the modal. Also removes the selectionIndicator
+    $('#exampleModal').on('hidden.bs.modal', () => {
+      viewer.selectedEntity = undefined;
+    });
+
     $('#pdf-button').click(() => {
       var pdf = new jspdf.jsPDF();
-      
+      var properties = viewer.selectedEntity.properties;
+      var propertyArray = viewer.selectedEntity.properties.propertyNames;
+      var textArray = []
+      for(let i = 0; i < propertyArray.length; i++){
+        textArray.push(propertyArray[i] + ': ' + String(Object.values(properties[propertyArray[i]])[0]));
+      } 
+      pdf.setFont('Times-Roman');
+      pdf.text(textArray, 20, 20);
+      pdf.output('dataurlnewwindow');
     });
 
     $('#csv-button').click(() => {
-      var propertyArray = viewer.selectedEntity.properties.propertyNames;
-      var valueArray = []
-      for(let i = 0; i < propertyArray.length; i++){
-        valueArray.push(Object.values(viewer.selectedEntity.properties[propertyArray[i]])[0]);
-      } 
+      dateArray = viewer.selectedEntity.properties['dates'];
+      valueArray = viewer.selectedEntity.properties['values'];
+
       var csvArray = [
-        [propertyArray], //Data names
-        [valueArray], //values
+        [dateArray], 
+        [valueArray], 
       ];
 
+      //Create a string delimited by commas to represent the CSV data
       let res = ""
       csvArray.forEach((row) => {
         res += row.join(",") + '\n';
       });
 
+      //Create the csv file using Blob and create a url for the file
       const file = new Blob([res], {type: 'text/csv'});
       const url = URL.createObjectURL(file);
+
+      //Set the CSV's a element to download the file
       linkWrapper = document.getElementById('csv-link');
       linkWrapper.setAttribute('href', url);
       document.getElementById('csv-link').click();
       linkWrapper.removeAttribute('href');
+
+      //Delete the values stored in the entity to save memory
+      viewer.selectedEntity.properties['dates'] = [];
+      viewer.selectedEntity.properties['values'] = [];
     });
   });
   

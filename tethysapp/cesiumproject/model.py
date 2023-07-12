@@ -38,12 +38,6 @@ def readDams():
     #Read the data into a DataFrame
     shape = gpd.read_file(shpPath)
 
-    print(shape.columns)
-
-
-    print(shape['geometry'].values[1].x)
-    print(shape['Pour_long'][1])
-
     for i in range(len(shape)):
         #Use the column name as a key
             #lat and long return a point so that's why we use x and y
@@ -58,11 +52,11 @@ def readDams():
         lake_area.append(float(shape['Lake_area'].values[i]))
         shore_len.append(float(shape['Shore_len'].values[i]))
         shore_dev.append(float(shape['Shore_dev'].values[i]))
-        vol_total.append(float(shape['Vol_res'].values[i]))
-        vol_res.append(float(shape['Vol_src'].values[i]))
-        vol_src.append(float(shape['Depth_avg'].values[i]))
+        vol_total.append(float(shape['Vol_total'].values[i]))
+        vol_res.append(float(shape['Vol_res'].values[i]))
+        vol_src.append(float(shape['Vol_src'].values[i]))
         depth_avg.append(float(shape['Depth_avg'].values[i]))
-        dis_avg.append(float(shape['Res_time'].values[i]))
+        dis_avg.append(float(shape['Dis_avg'].values[i]))
         res_time.append(float(shape['Res_time'].values[i]))
         elevation.append(float(shape['Elevation'].values[i]))
         slope_100.append(float(shape['Slope_100'].values[i]))

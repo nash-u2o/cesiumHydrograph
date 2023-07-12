@@ -12,6 +12,21 @@ def readDams():
     shpPath = os.path.join(currentDirectory, 'HydroLakes_polys_v10_10km2_Global_centroids', 'HydroLakes_polys_v10_10km2_Global_centroids.shp')
     csvPath = os.path.join(currentDirectory, 'HydroLakes_polys_v10_10km2_Global_centroids', 'HydroLakes_polys_v10_10km2_global_results_dswe.csv')
 
+    polyShpPath = os.path.join(currentDirectory, 'polygons', 'HydroLake_polygons.shp')
+
+    """['Hylak_id', 'Lake_name', 'Country', 'Continent', 'Poly_src',
+       'Lake_type', 'Grand_id', 'Lake_area', 'Shore_len', 'Shore_dev',
+       'Vol_total', 'Vol_res', 'Vol_src', 'Depth_avg', 'Dis_avg', 'Res_time',
+       'Elevation', 'Slope_100', 'Wshd_area', 'Pour_long', 'Pour_lat',
+       'Hylak_id_2', 'Lake_name_', 'Country_2', 'Continent_', 'Poly_src_2',
+       'Lake_type_', 'Grand_id_2', 'Lake_area_', 'Shore_len_', 'Shore_dev_',
+       'Vol_total_', 'Vol_res_2', 'Vol_src_2', 'Depth_avg_', 'Dis_avg_2',
+       'Res_time_2', 'Elevation_', 'Slope_100_', 'Wshd_area_', 'Pour_long_',
+       'Pour_lat_2', 'layer', 'geometry']"""
+
+    polyShape = gpd.read_file(polyShpPath)
+    print(polyShape.columns)
+
     #Arrays for the JSON file that is passed to the JS file
     lat = []
     long = [] 

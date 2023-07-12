@@ -29,8 +29,9 @@ $(function(){
 
   
     //Create the source that will hold the entities and the clustering information 
-    //NOTE: Clustering works poorly as is and works very poorly in 2D
+    //NOTE: Clustering works poorly in 3D and works very poorly in 2D
     var source = new Cesium.CustomDataSource("Lakes");
+    //NOTE: To access the fields in cesium objects, the best way to do it is to use dot notation like in the clustering below
     //source.clustering.enabled = true; //Enables clustering with default values
   
     //Iterate thought the length of the list to make feature objects with the fields
@@ -39,37 +40,40 @@ $(function(){
         id: idList[i],
         name: nameList[i],
         position: Cesium.Cartesian3.fromDegrees(latList[i], longList[i]),
-        country: countryList[i],
-        continent: continentList[i],
-        pLat: pLatList[i],
-        pLong: pLongList[i],
-        area: areaList[i],
-        len: lenList[i],
-        dev: devList[i],
-        vol: totalVolList[i],
-        res: resTotalList[i],
-        src: srcTotalList[i],
-        depth: depthList[i],
-        dis: disList[i],
-        time: timeList[i],
-        elevation: elevationList[i],
-        slope: slopeList[i],
-        wshd: wshdList[i],
+        properties: {
+          id: idList[i],
+          name: nameList[i], 
+          lon: longList[i].toFixed(2),
+          lat: latList[i].toFixed(2),
+          country: countryList[i],
+          continent: continentList[i],
+          pourLong: pLongList[i],
+          pourLat: pLatList[i],
+          area: areaList[i],
+          len: lenList[i],
+          dev: devList[i],
+          vol: totalVolList[i],
+          res: resTotalList[i],
+          src: srcTotalList[i],
+          depth: depthList[i],
+          dis: disList[i],
+          time: timeList[i],
+          elevation: elevationList[i],
+          slope: slopeList[i],
+          wshd: wshdList[i],
+        },
         point: 
           {
             color: Cesium.Color.RED, 
             pixelSize:4,
           },
-        }
-        );
-        
-      entity.addProperty('lon');
-      entity.addProperty('lat');
-      entity.lat = latList[i].toFixed(2);
-      entity.lon = longList[i].toFixed(2);
+        });
+      
+      //Add the entities directly to the entityCollection in the dataSource
       source.entities.add(entity);
       } 
 
+    //Creates the map
     const viewer = new Cesium.Viewer('map', {
       //Disable the clock and the timeline
       animation: false,
@@ -78,6 +82,7 @@ $(function(){
       //NOTE: name, id, and description are the only fields that affect what shows up in the infobox
       infoBox: false,
     });
+    //Add the dataSource directly to the map's dataSources. Layers are not needed
     viewer.dataSources.add(source);
 
     //Layout for the plotly graph
@@ -100,14 +105,12 @@ $(function(){
       },
     }
 
-    //Add an event to the viewer that detects if the selected entity changes. selectedEntityChanged is an event so we need to add a listener to that event
-    //Make the selection modify the description and add a plotly graph to it
-    //Look for the class js-plotly-plot on the id. If it exists, you can reformat the graph instead of generating a new one
+    //Add an event to the viewer that detects if the selected entity changes. selectedEntityChanged is an event 
+    //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
     viewer.selectedEntityChanged.addEventListener(function(){
       try{
-        console.log(viewer.selectedEntityChanged)
           $.get(
-          "/apps/cesiumproject/csvjson", 
+          "/apps/cesiumproject/csvjson", //Send a get request to the dummy site so the controller will send the data over in a JsonResponse
           { id: viewer.selectedEntity.id}, //Send the ID to get data for the specific hydrograph
           function(data){
             var infoPromise = new Promise((resolve) => {
@@ -118,8 +121,8 @@ $(function(){
               var x_values = Object.values(x_axis_object);
               var y_values = Object.values(y_axis_object);
               
-              var weeklyAvg = data['averages'][0];
-              var monthlyAvg = data['averages'][1];
+              //var weeklyAvg = data['averages'][0];
+              //var monthlyAvg = data['averages'][1];
 
       
               var plotData = {
@@ -149,34 +152,36 @@ $(function(){
               var time = document.getElementById('time');
               var slope = document.getElementById('slope');
               
+              var properties = viewer.selectedEntity.properties;
+
               //Configure the informtion for the modal
               Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
               header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
               id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</h6>';
-              lonlat.innerHTML = '<h6>' + 'Coordinates: (' + viewer.selectedEntity.lon + ', ' + viewer.selectedEntity.lat + ')' + '</h6>';
+              lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lon'] + ', ' + properties['lat'] + ')' + '</h6>';
               //week.innerHTML = '<h6>' + 'Weekly Average: ' + weeklyAvg + '</h6>';
               //month.innerHTML = '<h6>' + 'Monthly Average: ' + monthlyAvg + '</h6>';
-              continent.innerHTML = '<h6>' + 'Continent: ' + viewer.selectedEntity.continent + '</h6>';
-              country.innerHTML = '<h6>' + 'Country: ' + viewer.selectedEntity.country + '</h6>';
-              volume.innerHTML = '<h6>' + 'Volume: ' + viewer.selectedEntity.vol + '</h6>';
-              src.innerHTML = '<h6>' + 'Src: ' + viewer.selectedEntity.src + '</h6>';
-              dis.innerHTML = '<h6>' + 'Dis: ' + viewer.selectedEntity.dis + '</h6>';
-              elevation.innerHTML = '<h6>' + 'Elevation: ' + viewer.selectedEntity.elevation + '</h6>';
-              wshd.innerHTML = '<h6>' + 'Watershed: ' + viewer.selectedEntity.wshd + '</h6>';
-              pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + viewer.selectedEntity.pLong + ', ' + viewer.selectedEntity.pLat + ')' + '</h6>';
-              area.innerHTML = '<h6>' + 'Area: ' + viewer.selectedEntity.area + '</h6>';
-              length.innerHTML = '<h6>' + 'Length: ' + viewer.selectedEntity.len + '</h6>';
-              dev.innerHTML = '<h6>' + 'Dev: ' + viewer.selectedEntity.dev + '</h6>';
-              res.innerHTML = '<h6>' + 'Res: ' + viewer.selectedEntity.res + '</h6>';
-              depth.innerHTML = '<h6>' + 'Depth: ' + viewer.selectedEntity.depth + '</h6>';
-              time.innerHTML = '<h6>' + 'Time: ' + viewer.selectedEntity.time + '</h6>';
-              slope.innerHTML = '<h6>' + 'Slope: ' + viewer.selectedEntity.slope + '</h6>';
+              continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
+              country.innerHTML = '<h6>' + 'Country: ' + properties['country'] + '</h6>';
+              volume.innerHTML = '<h6>' + 'Volume: ' + properties['vol'] + '</h6>';
+              src.innerHTML = '<h6>' + 'Src: ' + properties['src'] + '</h6>';
+              dis.innerHTML = '<h6>' + 'Dis: ' + properties['dis'] + '</h6>';
+              elevation.innerHTML = '<h6>' + 'Elevation: ' + properties['elevation'] + '</h6>';
+              wshd.innerHTML = '<h6>' + 'Watershed: ' + properties['wshd'] + '</h6>';
+              pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLong']+ ', ' + properties['pourLat'] + ')' + '</h6>';
+              area.innerHTML = '<h6>' + 'Area: ' + properties['area'] + '</h6>';
+              length.innerHTML = '<h6>' + 'Length: ' + properties['len'] + '</h6>';
+              dev.innerHTML = '<h6>' + 'Dev: ' + properties['dev'] + '</h6>';
+              res.innerHTML = '<h6>' + 'Res: ' + properties['res'] + '</h6>';
+              depth.innerHTML = '<h6>' + 'Depth: ' + properties['depth'] + '</h6>';
+              time.innerHTML = '<h6>' + 'Time: ' + properties['time'] + '</h6>';
+              slope.innerHTML = '<h6>' + 'Slope: ' + properties['slope'] + '</h6>';
               resolve();
             });
+            //Once all of the info collecting is done, show the modal
             infoPromise.then(() => {
               $('#exampleModal').modal('show');
             });
-            console.log(viewer.selectedEntity);
           },
           'json');
       } catch {
@@ -184,20 +189,24 @@ $(function(){
       }
     });
     
+    //When the window is resized, adjust the width of the plotly graph in the modal
     window.addEventListener('resize', () => {
       try{
         plot = document.getElementById('figure');
         if(plot.classList.contains('js-plotly-plot')){
           Plotly.relayout(plot, {
+            //Size the plotly graph according to the width of the modal
             width: document.getElementById('modal-header').offsetWidth,
           });
         }
       } catch {}
     });
     
+    //When the modal is rendered, configure the graph to fit the width
     $('#exampleModal').on('shown.bs.modal', () => {
       Plotly.relayout(document.getElementById('figure'),{
         width: document.getElementById('modal-header').offsetWidth,
+        //autorange: true ensures the graph will reset its view when another modal is created
         'xaxis.autorange': true,
         'yaxis.autorange': true,
       });
@@ -205,10 +214,31 @@ $(function(){
 
     $('#pdf-button').click(() => {
       var pdf = new jspdf.jsPDF();
+      
     });
 
     $('#csv-button').click(() => {
-        console.log(viewer.selectedEntity)
+      var propertyArray = viewer.selectedEntity.properties.propertyNames;
+      var valueArray = []
+      for(let i = 0; i < propertyArray.length; i++){
+        valueArray.push(Object.values(viewer.selectedEntity.properties[propertyArray[i]])[0]);
+      } 
+      var csvArray = [
+        [propertyArray], //Data names
+        [valueArray], //values
+      ];
+
+      let res = ""
+      csvArray.forEach((row) => {
+        res += row.join(",") + '\n';
+      });
+
+      const file = new Blob([res], {type: 'text/csv'});
+      const url = URL.createObjectURL(file);
+      linkWrapper = document.getElementById('csv-link');
+      linkWrapper.setAttribute('href', url);
+      document.getElementById('csv-link').click();
+      linkWrapper.removeAttribute('href');
     });
   });
   

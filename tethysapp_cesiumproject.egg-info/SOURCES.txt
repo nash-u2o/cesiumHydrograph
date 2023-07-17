@@ -4,6 +4,7 @@ tethysapp/cesiumproject/app.py
 tethysapp/cesiumproject/controllers.py
 tethysapp/cesiumproject/handoff.py
 tethysapp/cesiumproject/model.py
+tethysapp/cesiumproject/public/polyJson.geojson
 tethysapp/cesiumproject/public/css/main.css
 tethysapp/cesiumproject/public/images/icon.gif
 tethysapp/cesiumproject/public/js/main.js
@@ -11,6 +12,7 @@ tethysapp/cesiumproject/public/js/plotly.js
 tethysapp/cesiumproject/templates/cesiumproject/base.html
 tethysapp/cesiumproject/templates/cesiumproject/csvJSON.html
 tethysapp/cesiumproject/templates/cesiumproject/home.html
+tethysapp/cesiumproject/templates/cesiumproject/poly.html
 tethysapp/cesiumproject/tests/__init__.py
 tethysapp/cesiumproject/tests/tests.py
 tethysapp/cesiumproject/workspaces/app_workspace/.gitkeep

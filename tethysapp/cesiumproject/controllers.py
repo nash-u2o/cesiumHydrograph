@@ -5,7 +5,7 @@ from tethys_sdk.permissions import login_required
 from tethys_sdk.gizmos import Button
 import json
 import requests
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 
 from .model import readDams, getHydrographData
 from .app import Cesiumproject
@@ -46,6 +46,10 @@ def csvJSON(request):
 
     return res
 
-def pdf(request):
+"""def poly(request):
 
-    return render(request, 'cesiumproject/pdf.html')
+    bboxString = request.GET.get('bboxString')
+    data = readPoly(bboxString)
+
+    res = HttpResponse(data)
+    return res"""

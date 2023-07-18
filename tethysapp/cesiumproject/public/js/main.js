@@ -31,13 +31,13 @@ $(function(){
 
   var boundRect = new Cesium.Rectangle();
   var rect = new Cesium.Rectangle()
+
   //Create the source that will hold the entities and the clustering information 
   //NOTE: Clustering works poorly in 3D and works very poorly in 2D
   var polySource = new Cesium.GeoJsonDataSource("Poly");
   var source = new Cesium.CustomDataSource("Lakes");
   //NOTE: To access the fields in cesium objects, the best way to do it is to use dot notation like in the clustering below 46.7386%2C36.5712%2C54.0525%2C47.1308
   //source.clustering.enabled = true; //Enables clustering with default values
-
 
   //Creates the map
   const viewer = new Cesium.Viewer('map', {
@@ -92,7 +92,7 @@ $(function(){
           dimensions: new Cesium.Cartesian3(20000,20000),
         });
         break;
-      case 3: //Currently orients itself improperly, sometimes failing to show up
+      case 3: //Currently orients itself improperly, sometimes failing to even make a triangle
         var cart = new Cesium.Cartesian3.fromDegrees(entity.properties['lon'], entity.properties['lat']);
         //Clone the cartesian coordiantes and use them to make the points on a triangle
         var top = cart.clone();

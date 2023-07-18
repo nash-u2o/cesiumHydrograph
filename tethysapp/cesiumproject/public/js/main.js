@@ -27,7 +27,7 @@ $(function(){
   var slopeList = myData.slope_100;
   var wshdList = myData.wshd_area;
   var typeList = myData.lake_type;
-  var surfaceData = JSON.parse(myData.surface_data);
+  var surfaceData = JSON.parse(myData.surface_data); //Contains the last value for each lake from the CSV
 
   var boundRect = new Cesium.Rectangle();
   var rect = new Cesium.Rectangle()
@@ -81,20 +81,20 @@ $(function(){
       },
     });
 
-    //Based on lake type, assign a box, point, or whatever else
-    //Use cartesian for the triangle, box for the box, and point for the circle
+    //Lake type 1 is a point, 2 is a box, and 3 is a polygon (shaped as a triangle)
     switch(typeList[i]){
       case 1:
         entity.point = new Cesium.PointGraphics({color: Cesium.Color.RED, pixelSize: 4});
         break;
-      case 2:
+      case 2: //Currently covers up where it is and does not scale by distance
         entity.box = new Cesium.BoxGraphics({
           material: Cesium.Color.CYAN,
           dimensions: new Cesium.Cartesian3(20000,20000),
         });
         break;
-      case 3:
+      case 3: //Currently orients itself improperly, sometimes failing to show up
         var cart = new Cesium.Cartesian3.fromDegrees(entity.properties['lon'], entity.properties['lat']);
+        //Clone the cartesian coordiantes and use them to make the points on a triangle
         var top = cart.clone();
         top.y = top['y'] - 15000;
         var left = cart.clone();
@@ -103,19 +103,13 @@ $(function(){
         var right = cart.clone();     
         right.x = right['x']+ 15000;
         right.y = right['y'] + 15000;
-
+        //Create a polygon based off of the 3 points. I'm fairly certain order doesn't matter in the hierarchy 
         entity.polygon = new Cesium.PolygonGraphics({
           material: Cesium.Color.DEEPPINK,
           hierarchy: [top, left, right],
         })
-        /*entity.ellipse = new Cesium.EllipseGraphics({
-          semiMajorAxis: 20000,
-          semiMinorAxis: 10000,
-          fill: Cesium.Color.DEEPPINK,
-        });*/
         break;
     }
-
 
     //Add the entities directly to the entityCollection in the dataSource
     source.entities.add(entity);
@@ -149,12 +143,12 @@ $(function(){
     },
   }
 
-
+  //When the camera stops moving, check its height. If below a certain distance, render polygons in the viewbox
+  //BUG: Pivoting can expand the viewbox and render a lot of polygons
   viewer.camera.moveEnd.addEventListener(() => {
     if((Cesium.Cartographic.fromCartesian(viewer.camera.position).height) / 1000 > 300){
-      //alert('Too far out. Zoom in to render polygons');
     } else {
-      //Grab a rectangle based off of the view of the camera
+      //Generate a rectangle that is the bounds of the view
       view = viewer.camera.computeViewRectangle();
       
       //get the bounds of the view needed to compute a bounding box
@@ -184,22 +178,23 @@ $(function(){
       for(let i = 0; i < bboxArray.length; i++){
         bboxArray[i] = bboxArray[i] * (180/Math.PI);
       }
-      //Join the bound into a string, delited by commas (2%C in urls) and put it into the geoserver filters
+      //Join the bound into a string, delimited by commas (2%C in urls) and put it into the geoserver filters
       bboxString = bboxArray.join('%2C');
 
-      //Take number from the string ID
-
       boundRect = new Cesium.Rectangle(nw.longitude, sw.latitude, se.longitude, nw.latitude);
+      //If there is no intersection with the bounding box, use the procecss function (which does not replace everything) to get the polygons
       if(Cesium.Rectangle.intersection(rect, boundRect) != null){
         viewer.dataSources._dataSources[1].process('https://pavics.ouranos.ca/geoserver/public/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=public%3AHydroLAKES_poly&bbox=' + bboxString + '&outputFormat=application%2Fjson');
         var loaded = viewer.dataSources._dataSources[1]._entityCollection._entities._array;
+        //If the entities loaded in from the webserver have ids that match those in the CSV, change the height of the polygons to match the value in the CSV
         for(let i = 0; i < loaded.length; i++){
-          var id = loaded[i]['id'].slice(loaded[i]['id'].indexOf('.') + 1);
+          var id = loaded[i]['id'].slice(loaded[i]['id'].indexOf('.') + 1); //Slice to obtain the integer from the ID
           if(surfaceData.hasOwnProperty(id)){
             loaded[i].polygon.extrudedHeight = surfaceData[id];
           }
         }
       } else {
+        //Same as above except load wipes all of the existing entities 
         rect = boundRect
         viewer.dataSources._dataSources[1].load('https://pavics.ouranos.ca/geoserver/public/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=public%3AHydroLAKES_poly&bbox=' + bboxString + '&outputFormat=application%2Fjson');
         var loaded = viewer.dataSources._dataSources[1]._entityCollection._entities._array;
@@ -210,20 +205,15 @@ $(function(){
           }
         }
       }
-
-      //Determine entities within the view. If above a certain number, don't load. If below a certain level, create a URL that contains all of the hylak ids
-      //hylak_id in (id1,id2)
-      //Cesium.Rectangle.contains(rectangle, cartographic) can be used to determine if entities are within a view rectangle
-
-       }
+    }
   });
 
-  //Add an event to the viewer that detects if the selected entity changes. selectedEntityChanged is an event 
+  //selectedEntityChanged is an event that fires when entities are selected OR unselected
   //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
   viewer.selectedEntityChanged.addEventListener(function(){
-
-    //Causes an issue somewhere when looking at lake polygons. Probably in the controller
+      //A try is necessary because, when entities are unselected, the event is still fired and throws an error
        try{
+        //If the entity selected is a polygon, do nothing because the information needed doesn't exist
         if(typeof(viewer.selectedEntity['id']) != 'string'){
           $.get(
           "/apps/cesiumproject/csvjson", //Send a get request to the dummy site so the controller will send the data over in a JsonResponse
@@ -277,8 +267,6 @@ $(function(){
               header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
               id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</h6>';
               lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lat'] + ', ' + properties['lon'] + ')' + '</h6>';
-              //week.innerHTML = '<h6>' + 'Weekly Average: ' + weeklyAvg + '</h6>';
-              //month.innerHTML = '<h6>' + 'Monthly Average: ' + monthlyAvg + '</h6>';
               continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
               country.innerHTML = '<h6>' + 'Country: ' + properties['country'] + '</h6>';
               volume.innerHTML = '<h6>' + 'Volume: ' + properties['vol'] + '</h6>';
@@ -339,16 +327,18 @@ $(function(){
   });
 
   $('#pdf-button').click(() => {
+    //Create a jsPDF to make the PDF
     var pdf = new jspdf.jsPDF();
     var properties = viewer.selectedEntity.properties;
     var propertyArray = viewer.selectedEntity.properties.propertyNames;
     var textArray = []
+    //Push the properties into an array for the PDF
     for(let i = 0; i < propertyArray.length - 2; i++){
       textArray.push(propertyArray[i] + ': ' + String(Object.values(properties[propertyArray[i]])[0]));
     } 
     pdf.setFont('Times-Roman');
     pdf.text(textArray, 20, 20);
-    //pdf.addImage(Plotly.toImage(document.getElementById('figure'), {format: 'png', width: 400, height: 300}), 'PNG', 200, 200, 400, 300);
+    //Add the plotly chart to the pdf
     Plotly.toImage(document.getElementById('figure'), {format: 'jpeg', width: 400, height: 300}).then(function(dataUrl) {
       pdf.addImage(dataUrl, 'JPEG', 75, 65, 125, 75);
       pdf.output('dataurlnewwindow');

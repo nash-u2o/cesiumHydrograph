@@ -242,8 +242,6 @@ $(function(){
               var header = document.getElementById('modal-header');
               var id = document.getElementById('id-block');
               var lonlat = document.getElementById('lonlat');
-              //var week = document.getElementById('weekly-average');
-              //var month = document.getElementById('monthly-average');
               var continent = document.getElementById('continent');
               var country = document.getElementById('country');
               var volume = document.getElementById('volume');
@@ -326,6 +324,7 @@ $(function(){
     viewer.selectedEntity = undefined;
   });
 
+  //Creates a pdf in a new tab on click
   $('#pdf-button').click(() => {
     //Create a jsPDF to make the PDF
     var pdf = new jspdf.jsPDF();
@@ -345,6 +344,7 @@ $(function(){
     });
   });
 
+  //Creates and downloads a CSV on click
   $('#csv-button').click(() => {
     dateArray = viewer.selectedEntity.properties['dates'];
     valueArray = viewer.selectedEntity.properties['values'];

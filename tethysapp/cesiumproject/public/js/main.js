@@ -49,6 +49,8 @@ $(function(){
     infoBox: false,
     scene3DOnly: true,
   });
+  //Remove interactions by accessing the screenSpaceEventHandler and removing input actions. This removes the zoom in caused by a double click
+  viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
   
   for (i = 0; i < latList.length; i++){
     entity = new Cesium.Entity({

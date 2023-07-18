@@ -222,6 +222,7 @@ $(function(){
   //Add an event to the viewer that detects if the selected entity changes. selectedEntityChanged is an event 
   //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
   viewer.selectedEntityChanged.addEventListener(function(){
+    //Causes an issue somewhere when looking at lake polygons. Probably in the controller
     console.log('here');
     try{
         $.get(

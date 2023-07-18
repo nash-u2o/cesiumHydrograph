@@ -13,7 +13,7 @@ def readDams():
     currentDirectory = os.path.dirname(os.path.abspath(__file__))
     shpPath = os.path.join(currentDirectory, 'HydroLakes_polys_v10_10km2_Global_centroids', 'HydroLakes_polys_v10_10km2_Global_centroids.shp')
     csvPath = os.path.join(currentDirectory, 'HydroLakes_polys_v10_10km2_Global_centroids', 'HydroLakes_polys_v10_10km2_global_results_dswe.csv')
-
+    jsonPath = os.path.join(currentDirectory, 'public', 'surfaceAreaData.json')
     polyShpPath = os.path.join(currentDirectory, 'polygons', 'HydroLake_polygons.shp')
 
     """['Hylak_id', 'Lake_name', 'Country', 'Continent', 'Poly_src',
@@ -53,6 +53,9 @@ def readDams():
     #Read the data into a DataFrame
     shape = gpd.read_file(shpPath)
     #polyShape = gpd.read_file(polyShpPath)
+
+    surfaceFile = open(jsonPath)
+    surface_data = surfaceFile.read()
 
     for i in range(len(shape)):
         #Use the column name as a key
@@ -104,6 +107,7 @@ def readDams():
         'slope_100': slope_100,
         'wshd_area': wshd_area,
         'lake_type': lake_type,
+        'surface_data': surface_data,
     }
     
     
@@ -143,7 +147,7 @@ def getHydrographData(id):
 
 
     #Return the column of values associated with the ID (y-axis) and the dates (x-axis)
-    return jGraph[id], dates, [weeklyAverage, monthlyAverage]
+    return jGraph[id], dates, [weeklyAverage, monthlyAverage], 
 
 
 """"def readPoly(bboxString):

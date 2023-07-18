@@ -5,6 +5,7 @@ tethysapp/cesiumproject/controllers.py
 tethysapp/cesiumproject/handoff.py
 tethysapp/cesiumproject/model.py
 tethysapp/cesiumproject/public/polyJson.geojson
+tethysapp/cesiumproject/public/surfaceAreaData.json
 tethysapp/cesiumproject/public/css/main.css
 tethysapp/cesiumproject/public/images/icon.gif
 tethysapp/cesiumproject/public/js/main.js

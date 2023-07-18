@@ -27,6 +27,7 @@ $(function(){
   var slopeList = myData.slope_100;
   var wshdList = myData.wshd_area;
   var typeList = myData.lake_type;
+  var surfaceData = JSON.parse(myData.surface_data);
 
   var boundRect = new Cesium.Rectangle();
   var rect = new Cesium.Rectangle()
@@ -34,7 +35,6 @@ $(function(){
   //NOTE: Clustering works poorly in 3D and works very poorly in 2D
   var polySource = new Cesium.GeoJsonDataSource("Poly");
   var source = new Cesium.CustomDataSource("Lakes");
-
   //NOTE: To access the fields in cesium objects, the best way to do it is to use dot notation like in the clustering below 46.7386%2C36.5712%2C54.0525%2C47.1308
   //source.clustering.enabled = true; //Enables clustering with default values
 
@@ -49,15 +49,6 @@ $(function(){
     infoBox: false,
     scene3DOnly: true,
   });
-
-  //Add a button to the toolbar on the viewer to allow the user to highlight the water sources in the camera view
-  /*const toolbar = document.querySelector("div.cesium-viewer-toolbar");
-  const modeButton = document.querySelector("span.cesium-sceneModePicker-wrapper");
-  const myButton = document.createElement("button");
-  myButton.classList.add("cesium-button", "cesium-toolbar-button");
-  myButton.id = 'polygon-button';
-  myButton.innerHTML = "X";
-  toolbar.insertBefore(myButton, modeButton);*/
   
   for (i = 0; i < latList.length; i++){
     entity = new Cesium.Entity({
@@ -196,19 +187,27 @@ $(function(){
       //Join the bound into a string, delited by commas (2%C in urls) and put it into the geoserver filters
       bboxString = bboxArray.join('%2C');
 
+      //Take number from the string ID
+
       boundRect = new Cesium.Rectangle(nw.longitude, sw.latitude, se.longitude, nw.latitude);
       if(Cesium.Rectangle.intersection(rect, boundRect) != null){
         viewer.dataSources._dataSources[1].process('https://pavics.ouranos.ca/geoserver/public/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=public%3AHydroLAKES_poly&bbox=' + bboxString + '&outputFormat=application%2Fjson');
         var loaded = viewer.dataSources._dataSources[1]._entityCollection._entities._array;
         for(let i = 0; i < loaded.length; i++){
-          loaded[i]._polygon._height = loaded[i]._properties['Wshd_area']*100;
+          var id = loaded[i]['id'].slice(loaded[i]['id'].indexOf('.') + 1);
+          if(surfaceData.hasOwnProperty(id)){
+            loaded[i].polygon.extrudedHeight = surfaceData[id];
+          }
         }
       } else {
         rect = boundRect
         viewer.dataSources._dataSources[1].load('https://pavics.ouranos.ca/geoserver/public/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=public%3AHydroLAKES_poly&bbox=' + bboxString + '&outputFormat=application%2Fjson');
         var loaded = viewer.dataSources._dataSources[1]._entityCollection._entities._array;
         for(let i = 0; i < loaded.length; i++){
-          loaded[i]._polygon._height = loaded[i]._properties['Wshd_area']*100;
+          var id = loaded[i]['id'].slice(loaded[i]['id'].indexOf('.') + 1);
+          if(surfaceData.hasOwnProperty(id)){
+            loaded[i].polygon.extrudedHeight = surfaceData[id];
+          }
         }
       }
 
@@ -222,88 +221,90 @@ $(function(){
   //Add an event to the viewer that detects if the selected entity changes. selectedEntityChanged is an event 
   //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
   viewer.selectedEntityChanged.addEventListener(function(){
+
     //Causes an issue somewhere when looking at lake polygons. Probably in the controller
-    console.log('here');
-    try{
-        $.get(
-        "/apps/cesiumproject/csvjson", //Send a get request to the dummy site so the controller will send the data over in a JsonResponse
-        { id: viewer.selectedEntity.id}, //Send the ID to get data for the specific hydrograph
-        function(data){
-          var infoPromise = new Promise((resolve) => {
-            //Our data is in a JSON - parse it to get the object
-            var x_axis_object = JSON.parse(data['dateList']);
-            var y_axis_object = JSON.parse(data['hydroPoints']);
+       try{
+        if(typeof(viewer.selectedEntity['id']) != 'string'){
+          $.get(
+          "/apps/cesiumproject/csvjson", //Send a get request to the dummy site so the controller will send the data over in a JsonResponse
+          { id: viewer.selectedEntity.id}, //Send the ID to get data for the specific hydrograph
+          function(data){
+            var infoPromise = new Promise((resolve) => {
+              //Our data is in a JSON - parse it to get the object
+              var x_axis_object = JSON.parse(data['dateList']);
+              var y_axis_object = JSON.parse(data['hydroPoints']);
 
-            //The object holds values which are keyed by indexes. Get the values in an array
-            var x_values = Object.values(x_axis_object);
-            var y_values = Object.values(y_axis_object);
-            
-            //Store the graph data in the entity to use it in the creation of a CSV
-            viewer.selectedEntity.properties['dates'] = x_values;
-            viewer.selectedEntity.properties['values'] = y_values;
+              //The object holds values which are keyed by indexes. Get the values in an array
+              var x_values = Object.values(x_axis_object);
+              var y_values = Object.values(y_axis_object);
+              
+              //Store the graph data in the entity to use it in the creation of a CSV
+              viewer.selectedEntity.properties['dates'] = x_values;
+              viewer.selectedEntity.properties['values'] = y_values;
 
-    
-            var plotData = {
-              x: x_values,
-              y: y_values,
-              type: 'scatter',
-            };
+      
+              var plotData = {
+                x: x_values,
+                y: y_values,
+                type: 'scatter',
+              };
 
-            var header = document.getElementById('modal-header');
-            var id = document.getElementById('id-block');
-            var lonlat = document.getElementById('lonlat');
-            //var week = document.getElementById('weekly-average');
-            //var month = document.getElementById('monthly-average');
-            var continent = document.getElementById('continent');
-            var country = document.getElementById('country');
-            var volume = document.getElementById('volume');
-            var src = document.getElementById('src');
-            var dis = document.getElementById('dis');
-            var elevation = document.getElementById('elevation');
-            var wshd = document.getElementById('wshd');
-            var pLongLat = document.getElementById('pLongLat');
-            var area = document.getElementById('area');
-            var length = document.getElementById('length');
-            var dev = document.getElementById('dev');
-            var res = document.getElementById('res');
-            var depth = document.getElementById('depth');
-            var time = document.getElementById('time');
-            var slope = document.getElementById('slope');
-            
-            var properties = viewer.selectedEntity.properties;
+              var header = document.getElementById('modal-header');
+              var id = document.getElementById('id-block');
+              var lonlat = document.getElementById('lonlat');
+              //var week = document.getElementById('weekly-average');
+              //var month = document.getElementById('monthly-average');
+              var continent = document.getElementById('continent');
+              var country = document.getElementById('country');
+              var volume = document.getElementById('volume');
+              var src = document.getElementById('src');
+              var dis = document.getElementById('dis');
+              var elevation = document.getElementById('elevation');
+              var wshd = document.getElementById('wshd');
+              var pLongLat = document.getElementById('pLongLat');
+              var area = document.getElementById('area');
+              var length = document.getElementById('length');
+              var dev = document.getElementById('dev');
+              var res = document.getElementById('res');
+              var depth = document.getElementById('depth');
+              var time = document.getElementById('time');
+              var slope = document.getElementById('slope');
+              
+              var properties = viewer.selectedEntity.properties;
 
-            //Configure the informtion for the modal
-            Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
-            header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
-            id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</h6>';
-            lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lat'] + ', ' + properties['lon'] + ')' + '</h6>';
-            //week.innerHTML = '<h6>' + 'Weekly Average: ' + weeklyAvg + '</h6>';
-            //month.innerHTML = '<h6>' + 'Monthly Average: ' + monthlyAvg + '</h6>';
-            continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
-            country.innerHTML = '<h6>' + 'Country: ' + properties['country'] + '</h6>';
-            volume.innerHTML = '<h6>' + 'Volume: ' + properties['vol'] + '</h6>';
-            src.innerHTML = '<h6>' + 'Src: ' + properties['src'] + '</h6>';
-            dis.innerHTML = '<h6>' + 'Dis: ' + properties['dis'] + '</h6>';
-            elevation.innerHTML = '<h6>' + 'Elevation: ' + properties['elevation'] + '</h6>';
-            wshd.innerHTML = '<h6>' + 'Watershed: ' + properties['wshd'] + '</h6>';
-            pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLat']+ ', ' + properties['pourLong'] + ')' + '</h6>';
-            area.innerHTML = '<h6>' + 'Area: ' + properties['area'] + '</h6>';
-            length.innerHTML = '<h6>' + 'Length: ' + properties['len'] + '</h6>';
-            dev.innerHTML = '<h6>' + 'Dev: ' + properties['dev'] + '</h6>';
-            res.innerHTML = '<h6>' + 'Res: ' + properties['res'] + '</h6>';
-            depth.innerHTML = '<h6>' + 'Depth: ' + properties['depth'] + '</h6>';
-            time.innerHTML = '<h6>' + 'Time: ' + properties['time'] + '</h6>';
-            slope.innerHTML = '<h6>' + 'Slope: ' + properties['slope'] + '</h6>';
-            resolve();
-          });
-          //Once all of the info collecting is done, show the modal
-          infoPromise.then(() => {
-            $('#exampleModal').modal('show');
-          });
-        },
-        'json');
-    } catch {
-      //Do nothing if there is not a selected entity or if there is any other issue
+              //Configure the informtion for the modal
+              Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
+              header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
+              id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</h6>';
+              lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lat'] + ', ' + properties['lon'] + ')' + '</h6>';
+              //week.innerHTML = '<h6>' + 'Weekly Average: ' + weeklyAvg + '</h6>';
+              //month.innerHTML = '<h6>' + 'Monthly Average: ' + monthlyAvg + '</h6>';
+              continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
+              country.innerHTML = '<h6>' + 'Country: ' + properties['country'] + '</h6>';
+              volume.innerHTML = '<h6>' + 'Volume: ' + properties['vol'] + '</h6>';
+              src.innerHTML = '<h6>' + 'Src: ' + properties['src'] + '</h6>';
+              dis.innerHTML = '<h6>' + 'Dis: ' + properties['dis'] + '</h6>';
+              elevation.innerHTML = '<h6>' + 'Elevation: ' + properties['elevation'] + '</h6>';
+              wshd.innerHTML = '<h6>' + 'Watershed: ' + properties['wshd'] + '</h6>';
+              pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLat']+ ', ' + properties['pourLong'] + ')' + '</h6>';
+              area.innerHTML = '<h6>' + 'Area: ' + properties['area'] + '</h6>';
+              length.innerHTML = '<h6>' + 'Length: ' + properties['len'] + '</h6>';
+              dev.innerHTML = '<h6>' + 'Dev: ' + properties['dev'] + '</h6>';
+              res.innerHTML = '<h6>' + 'Res: ' + properties['res'] + '</h6>';
+              depth.innerHTML = '<h6>' + 'Depth: ' + properties['depth'] + '</h6>';
+              time.innerHTML = '<h6>' + 'Time: ' + properties['time'] + '</h6>';
+              slope.innerHTML = '<h6>' + 'Slope: ' + properties['slope'] + '</h6>';
+              resolve();
+            });
+            //Once all of the info collecting is done, show the modal
+            infoPromise.then(() => {
+              $('#exampleModal').modal('show');
+            });
+          },
+          'json');
+        } 
+        //Do nothing if there is not a selected entity or if there is any other issue
+      } catch {
     }
   });
   

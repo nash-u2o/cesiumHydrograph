@@ -73,6 +73,7 @@
   <script>
     //Make a variable for the data that is being passed to the javascript file from the controller's context that renders this specific page
     var myData = {{ jData|safe }};
+    {# var polyJson = '{% static "cesiumproject/polyJson.geojson" %}' #}
   </script>   
   <script src="{% static 'cesiumproject/js/main.js' %}" type="text/javascript"></script>  
 {% endblock %}

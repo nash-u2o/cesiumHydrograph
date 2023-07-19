@@ -3,11 +3,15 @@
 
 {% block app_content %}
 
-<!-- Button trigger modal -->
-
-
 <body>
   <div id='map'></div>
+  <div id='toolbar' name='toolbar'>
+    <select id='draw-options'>
+      <option value='1'>Draw Point</option>
+      <option value='2'>Draw Line</option>
+      <option value='3'>Draw Polygon</option>
+    </select>
+  </div>
   <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content" id='modal-content'>

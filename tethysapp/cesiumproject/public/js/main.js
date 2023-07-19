@@ -5,6 +5,13 @@
 
 $(function(){
   Cesium.Ion.defaultAccessToken='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2Y2M3NTVjOS05YmE2LTQyNmEtYjQ1MS1hODBlNWM1MmYwZTIiLCJpZCI6MTUwNTM1LCJpYXQiOjE2ODgxNTI4MzN9.yswdjP2gynH4ndTniyMFIJkCpkzpl7fePBeomQ_-WnY';
+
+  //Change the dropdown box back to point
+  $('#draw-options option[value="1"]').attr('selected', true)
+
+  //Draw a point on double-click
+  
+  
   //Grab the arrays from the data in the html file
   var latList = myData.lat;
   var longList = myData.long;
@@ -32,6 +39,9 @@ $(function(){
   var boundRect = new Cesium.Rectangle();
   var rect = new Cesium.Rectangle()
 
+  //Will hold the points the handlers create when drawing
+  var lineList = []
+
   //Create the source that will hold the entities and the clustering information 
   //NOTE: Clustering works poorly in 3D and works very poorly in 2D
   var polySource = new Cesium.GeoJsonDataSource("Poly");
@@ -44,13 +54,19 @@ $(function(){
     //Disable the clock and the timeline
     animation: false,
     timeline: false,
-    //Disable the infobox and make a custom popup
     //NOTE: name, id, and description are the only fields that affect what shows up in the infobox
     infoBox: false,
     scene3DOnly: true,
+    //Change the imagery provider because the default bing maps has limited monthly uses (1000)
+    imageryProvider: new Cesium.IonImageryProvider({assetId: 3954}),
   });
+
   //Remove interactions by accessing the screenSpaceEventHandler and removing input actions. This removes the zoom in caused by a double click
   viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+  //Set right click to draw points by default
+  viewer.screenSpaceEventHandler.setInputAction(pointHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+  //Remove the ability to pan the camera to prevent the user from expanding the view box beyond intended
+  viewer.scene.screenSpaceCameraController.enableTilt = false;
   
   for (i = 0; i < latList.length; i++){
     entity = new Cesium.Entity({
@@ -376,6 +392,142 @@ $(function(){
     viewer.selectedEntity.properties['dates'] = [];
     viewer.selectedEntity.properties['values'] = [];
   });
+
+//Handlers for the draw interactions
+let placedPointList = [];
+let placedPoint;
+let movingPoint;
+let dynamicShape;
+let mode;
+
+  function pointHandler(click){
+    //The position click holds is based on the view frame, not the position on the map
+    const ray = viewer.camera.getPickRay(click.position);
+    const earthPosition = viewer.scene.globe.pick(ray, viewer.scene);
+
+    viewer.entities.add(new Cesium.Entity({
+      position: earthPosition,
+      point: new Cesium.PointGraphics({
+        color: Cesium.Color.YELLOW,
+        pixelSize: 4,
+      }),
+    }));
+  }
+
+//The following code was taken from the cesium drawing tutorial. It is possible to do, but not very straightforward so I had a hard time trying to make it myself and instead copied it. 
+
+  function createPoint(myPosition){
+    const point = viewer.entities.add({
+      position: myPosition,
+      point: {
+        color: Cesium.Color.WHITE,
+        pixelSize: 5,
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      },
+    });
+    return point;
+  }
+
+  function drawShape(myPositions){
+    let shape;
+    if(mode == "line"){
+      shape = viewer.entities.add({
+        polyline: {
+          positions: myPositions,
+          clampToGround: true,
+          width: 3,
+        },
+      });
+    } else if(mode == "poly") {
+      shape = viewer.entities.add({
+        polygon: {
+          hierarchy: myPositions,
+          material: new Cesium.ColorMaterialProperty(
+            Cesium.Color.WHITE
+          ),
+        },
+      })
+    }
+    return shape
+  }
+
+  //Callback
+  function clickHandler(event){
+    const ray = viewer.camera.getPickRay(event.position);
+    const earthPosition = viewer.scene.globe.pick(ray, viewer.scene);
+    // `earthPosition` will be undefined if our mouse is not over the globe.
+    if(Cesium.defined(earthPosition)){
+      if (placedPointList.length === 0) {
+        movingPoint = createPoint(earthPosition);
+        placedPointList.push(earthPosition);
+        const dynamicPositions = new Cesium.CallbackProperty(function () {
+          if (mode === "poly") { 
+            return new Cesium.PolygonHierarchy(placedPointList);
+          
+          }
+          return placedPointList;
+        }, false);
+        dynamicShape = drawShape(dynamicPositions);
+      }
+      placedPointList.push(earthPosition);
+      createPoint(earthPosition);
+    }
+  }
+
+  //Callback
+  function moveHandler(event){
+    if(Cesium.defined(movingPoint)){
+      const ray = viewer.camera.getPickRay(event.endPosition);
+      const newPosition = viewer.scene.globe.pick(ray, viewer.scene);
+      if(Cesium.defined(newPosition)){
+        movingPoint.position.setValue(newPosition);
+        placedPointList.pop();
+        placedPointList.push(newPosition);
+      }
+    }
+  }
+
+  function terminate(){
+    placedPointList.pop(); //pop off dynamic point
+    drawShape(placedPointList);
+    viewer.entities.remove(movingPoint);
+    viewer.entities.remove(dynamicShape);
+    movingPoint = undefined;
+    dynamicShape = undefined;
+    placedPointList = [];
+  }
+
+  function middleHandler(){
+    terminate();
+  }
+
+  $('#draw-options').change(function(){
+    switch($(this).val()){
+      case '1':
+        viewer.screenSpaceEventHandler.setInputAction(pointHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+        viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+        viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
+        break;
+      case '2': 
+        if(placedPointList.length != 0){
+          terminate();
+        }
+        mode = 'line';
+        viewer.screenSpaceEventHandler.setInputAction(clickHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+        viewer.screenSpaceEventHandler.setInputAction(moveHandler, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+        viewer.screenSpaceEventHandler.setInputAction(middleHandler, Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
+        break;
+      case '3':
+        if(placedPointList.length != 0){
+          terminate();
+        } 
+        mode = 'poly';
+        viewer.screenSpaceEventHandler.setInputAction(clickHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+        viewer.screenSpaceEventHandler.setInputAction(moveHandler, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+        viewer.screenSpaceEventHandler.setInputAction(middleHandler, Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
+        break;
+    }
+  })
 });
   
   

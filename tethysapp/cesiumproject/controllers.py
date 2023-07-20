@@ -1,11 +1,6 @@
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.urls import reverse
+from django.shortcuts import render
 from tethys_sdk.permissions import login_required
-from tethys_sdk.gizmos import Button
-import json
-import requests
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 
 from .model import readDams, getHydrographData
 from .app import Cesiumproject
@@ -54,11 +49,3 @@ def csvJSON(request):
     res = JsonResponse(dataDict)
 
     return res
-
-"""def poly(request):
-
-    bboxString = request.GET.get('bboxString')
-    data = readPoly(bboxString)
-
-    res = HttpResponse(data)
-    return res"""

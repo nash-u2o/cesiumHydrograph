@@ -5,12 +5,15 @@
 
 $(function(){
   Cesium.Ion.defaultAccessToken='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2Y2M3NTVjOS05YmE2LTQyNmEtYjQ1MS1hODBlNWM1MmYwZTIiLCJpZCI6MTUwNTM1LCJpYXQiOjE2ODgxNTI4MzN9.yswdjP2gynH4ndTniyMFIJkCpkzpl7fePBeomQ_-WnY';
-  //15
+  
+  //Used to send the get request
   function getValues(viewer, dict){
+    //If a user selects something, it can only be a polygon or an icon. Icons always match lakes that have data, but polygons don't so we must check if they do
     let id = viewer.selectedEntity.id
-    let entity = viewer.selectedEntity
+    let entity = viewer.selectedEntity //Create a local variable so we can send the entity to the get request 
+    //If the id is a string, a polygon was selected
     if(typeof(viewer.selectedEntity.id) == 'string'){
-      id = viewer.selectedEntity.id.slice(16);
+      id = viewer.selectedEntity.id.slice(16); //Cut out the id
       if(dict[id] != undefined){
         entity = dict[id];
       }
@@ -154,7 +157,7 @@ $(function(){
   //Remove the ability to pan the camera to prevent the user from expanding the view box beyond intended
   viewer.scene.screenSpaceCameraController.enableTilt = false;
   
-  let idDict = {};
+  let idDict = {}; //Used to key ids with entities
   pin = new Cesium.PinBuilder();
   for (i = 0; i < latList.length; i++){
     entity = new Cesium.Entity({
@@ -220,6 +223,7 @@ $(function(){
         trianglePin.then(source.entities.add(entity));
         break;
     }
+    //As you approach 100000 meters, the icon's size is doubled. As you zoom out towards 1000000 meters, the icons sized is halved
     entity.billboard.scaleByDistance = new Cesium.NearFarScalar(100000, 2, 1000000, .5);
     idDict[entity.id] = entity;
   } 
@@ -227,10 +231,6 @@ $(function(){
   //Add the dataSource directly to the map's dataSources. Layers are not needed
   viewer.dataSources.add(source);
   viewer.dataSources.add(polySource);
-
-
-  //NOTE: This is another case where you are dealing with an object that already exists and you don't have to create your own. The viewer already has a camera object
-  //On change, get the zoom level. If within a certain level get rid of points and render the polygon
 
   //Layout for the plotly graph
   var layout = {
@@ -253,7 +253,6 @@ $(function(){
   }
 
   //When the camera stops moving, check its height. If below a certain distance, render polygons in the viewbox
-  //BUG: Pivoting can expand the viewbox and render a lot of polygons
   viewer.camera.moveEnd.addEventListener(() => {
     if((Cesium.Cartographic.fromCartesian(viewer.camera.position).height) / 1000 > 300){
     } else {
@@ -322,10 +321,8 @@ $(function(){
   //selectedEntityChanged is an event that fires when entities are selected OR unselected
   //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
   viewer.selectedEntityChanged.addEventListener(function(){
-
     //A try is necessary because, when entities are unselected, the event is still fired and throws an error
     try{
-      //If the entity selected is not a polygon, use its ID to get info
       if(typeof(viewer.selectedEntity['id']) != 'string'){
         getValues(viewer, idDict);
       } else {

@@ -19,7 +19,7 @@ class Cesiumproject(TethysAppBase):
 
     initialized = False
 
-    #Check to see if the class is initialized. This method is used in teh controller to avoid reloading all of the points
+    #Check to see if the class is initialized. This method is used in the controller to avoid reloading all of the points
     def getInit(self):
         return self.initialized
     

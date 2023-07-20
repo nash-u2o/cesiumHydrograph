@@ -5,6 +5,95 @@
 
 $(function(){
   Cesium.Ion.defaultAccessToken='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2Y2M3NTVjOS05YmE2LTQyNmEtYjQ1MS1hODBlNWM1MmYwZTIiLCJpZCI6MTUwNTM1LCJpYXQiOjE2ODgxNTI4MzN9.yswdjP2gynH4ndTniyMFIJkCpkzpl7fePBeomQ_-WnY';
+  //15
+  function getValues(viewer, dict){
+    let id = viewer.selectedEntity.id
+    let entity = viewer.selectedEntity
+    if(typeof(viewer.selectedEntity.id) == 'string'){
+      id = viewer.selectedEntity.id.slice(16);
+      if(dict[id] != undefined){
+        entity = dict[id];
+      }
+    }
+      $.get(
+        "/apps/cesiumproject/csvjson", //Send a get request to the dummy site so the controller will send the data over in a JsonResponse
+        { id: entity.id}, //Send the ID to get data for the specific hydrograph
+        function(data){
+          if(data.flag){
+            return false
+          }
+          var infoPromise = new Promise((resolve) => {
+            //Our data is in a JSON - parse it to get the object
+            var x_axis_object = JSON.parse(data['dateList']);
+            var y_axis_object = JSON.parse(data['hydroPoints']);
+
+            //The object holds values which are keyed by indexes. Get the values in an array
+            var x_values = Object.values(x_axis_object);
+            var y_values = Object.values(y_axis_object);
+            
+            //Store the graph data in the entity to use it in the creation of a CSV
+            entity.properties['dates'] = x_values;
+            entity.properties['values'] = y_values;
+
+    
+            var plotData = {
+              x: x_values,
+              y: y_values,
+              type: 'scatter',
+            };
+
+            var header = document.getElementById('modal-header');
+            var id = document.getElementById('id-block');
+            var lonlat = document.getElementById('lonlat');
+            var continent = document.getElementById('continent');
+            var country = document.getElementById('country');
+            var volume = document.getElementById('volume');
+            var src = document.getElementById('src');
+            var dis = document.getElementById('dis');
+            var elevation = document.getElementById('elevation');
+            var wshd = document.getElementById('wshd');
+            var pLongLat = document.getElementById('pLongLat');
+            var area = document.getElementById('area');
+            var length = document.getElementById('length');
+            var dev = document.getElementById('dev');
+            var res = document.getElementById('res');
+            var depth = document.getElementById('depth');
+            var time = document.getElementById('time');
+            var slope = document.getElementById('slope');
+            
+            var properties = entity.properties;
+
+            //Configure the informtion for the modal
+            Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
+            header.innerHTML = '<h3>' + entity.name + '</h3>';
+            id.innerHTML = '<h6>' + 'ID: ' + entity.id + '</h6>';
+            lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lat'] + ', ' + properties['lon'] + ')' + '</h6>';
+            continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
+            country.innerHTML = '<h6>' + 'Country: ' + properties['country'] + '</h6>';
+            volume.innerHTML = '<h6>' + 'Volume: ' + properties['vol'] + '</h6>';
+            src.innerHTML = '<h6>' + 'Src: ' + properties['src'] + '</h6>';
+            dis.innerHTML = '<h6>' + 'Dis: ' + properties['dis'] + '</h6>';
+            elevation.innerHTML = '<h6>' + 'Elevation: ' + properties['elevation'] + '</h6>';
+            wshd.innerHTML = '<h6>' + 'Watershed: ' + properties['wshd'] + '</h6>';
+            pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLat']+ ', ' + properties['pourLong'] + ')' + '</h6>';
+            area.innerHTML = '<h6>' + 'Area: ' + properties['area'] + '</h6>';
+            length.innerHTML = '<h6>' + 'Length: ' + properties['len'] + '</h6>';
+            dev.innerHTML = '<h6>' + 'Dev: ' + properties['dev'] + '</h6>';
+            res.innerHTML = '<h6>' + 'Res: ' + properties['res'] + '</h6>';
+            depth.innerHTML = '<h6>' + 'Depth: ' + properties['depth'] + '</h6>';
+            time.innerHTML = '<h6>' + 'Time: ' + properties['time'] + '</h6>';
+            slope.innerHTML = '<h6>' + 'Slope: ' + properties['slope'] + '</h6>';
+            resolve();
+          });
+          
+          //Once all of the info collecting is done, show the modal
+          infoPromise.then(() => {
+            $('#exampleModal').modal('show');
+          });
+          return true
+        },
+        'json');
+    }
 
   //Change the dropdown box back to point
   $('#draw-options option[value="1"]').attr('selected', true)
@@ -39,9 +128,6 @@ $(function(){
   var boundRect = new Cesium.Rectangle();
   var rect = new Cesium.Rectangle()
 
-  //Will hold the points the handlers create when drawing
-  var lineList = []
-
   //Create the source that will hold the entities and the clustering information 
   //NOTE: Clustering works poorly in 3D and works very poorly in 2D
   var polySource = new Cesium.GeoJsonDataSource("Poly");
@@ -68,6 +154,8 @@ $(function(){
   //Remove the ability to pan the camera to prevent the user from expanding the view box beyond intended
   viewer.scene.screenSpaceCameraController.enableTilt = false;
   
+  let idDict = {};
+  pin = new Cesium.PinBuilder();
   for (i = 0; i < latList.length; i++){
     entity = new Cesium.Entity({
       id: idList[i],
@@ -102,35 +190,38 @@ $(function(){
     //Lake type 1 is a point, 2 is a box, and 3 is a polygon (shaped as a triangle)
     switch(typeList[i]){
       case 1:
-        entity.point = new Cesium.PointGraphics({color: Cesium.Color.RED, pixelSize: 4});
-        break;
-      case 2: //Currently covers up where it is and does not scale by distance
-        entity.box = new Cesium.BoxGraphics({
-          material: Cesium.Color.CYAN,
-          dimensions: new Cesium.Cartesian3(20000,20000),
+        const circlePin = new Promise((resolve) => {
+          entity.billboard = ({
+            image: pin.fromMakiIconId('circle', Cesium.Color.RED, 20),
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          });
+          resolve();
         });
+        circlePin.then(source.entities.add(entity));
         break;
-      case 3: //Currently orients itself improperly, sometimes failing to even make a triangle
-        var cart = new Cesium.Cartesian3.fromDegrees(entity.properties['lon'], entity.properties['lat']);
-        //Clone the cartesian coordiantes and use them to make the points on a triangle
-        var top = cart.clone();
-        top.y = top['y'] - 15000;
-        var left = cart.clone();
-        left.x = left['x'] - 15000;
-        left.y = left['y'] + 15000;
-        var right = cart.clone();     
-        right.x = right['x']+ 15000;
-        right.y = right['y'] + 15000;
-        //Create a polygon based off of the 3 points. I'm fairly certain order doesn't matter in the hierarchy 
-        entity.polygon = new Cesium.PolygonGraphics({
-          material: Cesium.Color.DEEPPINK,
-          hierarchy: [top, left, right],
-        })
+      case 2:
+        const boxPin = new Promise((resolve) => {
+          entity.billboard = ({
+            image: pin.fromMakiIconId('square', Cesium.Color.BLUE, 20),
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          });
+          resolve();
+        });
+        boxPin.then(source.entities.add(entity));
+        break;
+      case 3:
+        const trianglePin = new Promise((resolve) => {
+          entity.billboard = ({
+            image: pin.fromMakiIconId('triangle', Cesium.Color.GREEN, 20),
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          });
+          resolve();
+        });
+        trianglePin.then(source.entities.add(entity));
         break;
     }
-
-    //Add the entities directly to the entityCollection in the dataSource
-    source.entities.add(entity);
+    entity.billboard.scaleByDistance = new Cesium.NearFarScalar(100000, 2, 1000000, .5);
+    idDict[entity.id] = entity;
   } 
 
   //Add the dataSource directly to the map's dataSources. Layers are not needed
@@ -226,89 +317,27 @@ $(function(){
     }
   });
 
+  
+
   //selectedEntityChanged is an event that fires when entities are selected OR unselected
   //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
   viewer.selectedEntityChanged.addEventListener(function(){
-      //A try is necessary because, when entities are unselected, the event is still fired and throws an error
-       try{
-        //If the entity selected is a polygon, do nothing because the information needed doesn't exist
-        if(typeof(viewer.selectedEntity['id']) != 'string'){
-          $.get(
-          "/apps/cesiumproject/csvjson", //Send a get request to the dummy site so the controller will send the data over in a JsonResponse
-          { id: viewer.selectedEntity.id}, //Send the ID to get data for the specific hydrograph
-          function(data){
-            var infoPromise = new Promise((resolve) => {
-              //Our data is in a JSON - parse it to get the object
-              var x_axis_object = JSON.parse(data['dateList']);
-              var y_axis_object = JSON.parse(data['hydroPoints']);
 
-              //The object holds values which are keyed by indexes. Get the values in an array
-              var x_values = Object.values(x_axis_object);
-              var y_values = Object.values(y_axis_object);
-              
-              //Store the graph data in the entity to use it in the creation of a CSV
-              viewer.selectedEntity.properties['dates'] = x_values;
-              viewer.selectedEntity.properties['values'] = y_values;
-
-      
-              var plotData = {
-                x: x_values,
-                y: y_values,
-                type: 'scatter',
-              };
-
-              var header = document.getElementById('modal-header');
-              var id = document.getElementById('id-block');
-              var lonlat = document.getElementById('lonlat');
-              var continent = document.getElementById('continent');
-              var country = document.getElementById('country');
-              var volume = document.getElementById('volume');
-              var src = document.getElementById('src');
-              var dis = document.getElementById('dis');
-              var elevation = document.getElementById('elevation');
-              var wshd = document.getElementById('wshd');
-              var pLongLat = document.getElementById('pLongLat');
-              var area = document.getElementById('area');
-              var length = document.getElementById('length');
-              var dev = document.getElementById('dev');
-              var res = document.getElementById('res');
-              var depth = document.getElementById('depth');
-              var time = document.getElementById('time');
-              var slope = document.getElementById('slope');
-              
-              var properties = viewer.selectedEntity.properties;
-
-              //Configure the informtion for the modal
-              Plotly.newPlot(document.getElementById('figure'), [plotData], layout, {responsive: true})
-              header.innerHTML = '<h3>' + viewer.selectedEntity.name + '</h3>';
-              id.innerHTML = '<h6>' + 'ID: ' + viewer.selectedEntity.id + '</h6>';
-              lonlat.innerHTML = '<h6>' + 'Coordinates: (' + properties['lat'] + ', ' + properties['lon'] + ')' + '</h6>';
-              continent.innerHTML = '<h6>' + 'Continent: ' + properties['continent'] + '</h6>';
-              country.innerHTML = '<h6>' + 'Country: ' + properties['country'] + '</h6>';
-              volume.innerHTML = '<h6>' + 'Volume: ' + properties['vol'] + '</h6>';
-              src.innerHTML = '<h6>' + 'Src: ' + properties['src'] + '</h6>';
-              dis.innerHTML = '<h6>' + 'Dis: ' + properties['dis'] + '</h6>';
-              elevation.innerHTML = '<h6>' + 'Elevation: ' + properties['elevation'] + '</h6>';
-              wshd.innerHTML = '<h6>' + 'Watershed: ' + properties['wshd'] + '</h6>';
-              pLongLat.innerHTML = '<h6>' + 'Pour Coordinates: (' + properties['pourLat']+ ', ' + properties['pourLong'] + ')' + '</h6>';
-              area.innerHTML = '<h6>' + 'Area: ' + properties['area'] + '</h6>';
-              length.innerHTML = '<h6>' + 'Length: ' + properties['len'] + '</h6>';
-              dev.innerHTML = '<h6>' + 'Dev: ' + properties['dev'] + '</h6>';
-              res.innerHTML = '<h6>' + 'Res: ' + properties['res'] + '</h6>';
-              depth.innerHTML = '<h6>' + 'Depth: ' + properties['depth'] + '</h6>';
-              time.innerHTML = '<h6>' + 'Time: ' + properties['time'] + '</h6>';
-              slope.innerHTML = '<h6>' + 'Slope: ' + properties['slope'] + '</h6>';
-              resolve();
-            });
-            //Once all of the info collecting is done, show the modal
-            infoPromise.then(() => {
-              $('#exampleModal').modal('show');
-            });
-          },
-          'json');
-        } 
-        //Do nothing if there is not a selected entity or if there is any other issue
-      } catch {
+    //A try is necessary because, when entities are unselected, the event is still fired and throws an error
+    try{
+      //If the entity selected is not a polygon, use its ID to get info
+      if(typeof(viewer.selectedEntity['id']) != 'string'){
+        getValues(viewer, idDict);
+      } else {
+        if(typeof(viewer.selectedEntity['id']) != undefined){
+          if(!getValues(viewer, idDict)){
+            viewer.selectedEntity = undefined;
+          }
+        }
+        
+      }
+      //Do nothing if there is not a selected entity or if there is any other issue
+    } catch {
     }
   });
   
@@ -395,7 +424,6 @@ $(function(){
 
 //Handlers for the draw interactions
 let placedPointList = [];
-let placedPoint;
 let movingPoint;
 let dynamicShape;
 let mode;

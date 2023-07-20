@@ -33,12 +33,21 @@ def csvJSON(request):
     #The request was passed give the id when made, get the ID
     id = request.GET.get('id')
     #Get the dates from the model and use the id to get the value column
-    data, dates, averages = getHydrographData(id)
+    flag = False
+    try:
+        data, dates, averages = getHydrographData(id)
+    except: 
+        flag = True
+        dataDict = {
+            'flag': flag
+        }
+        return JsonResponse(dataDict)
     #Make a dict because JsonResponse serializes and passes a dict
     dataDict = {
         'hydroPoints': data,
         'dateList': dates,
         'averages': averages,
+        'flag': flag
     }
 
     #We have to pass a response (response methods are needed) so use the JsonResponse to easily pass the data over

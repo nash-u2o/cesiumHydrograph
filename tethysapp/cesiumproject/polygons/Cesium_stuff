@@ -1,0 +1,14 @@
+List of Cesium things to try out:
+- //Transition points representing lakes/reservoirs to polygons (I'll be sending polygons along with this) *DONE*
+	- //Look into transforming these polygons to 3D (maybe only at a certain zoom level ) where size determines the height of the 3D polygon -- Make file for csv and use the value --
+- Displaying different shapes (circles, squares, triangles) representing reservoir locations depending on lake type -- POINT, BOX, POLYGON **KIND OF DONE
+- Look into ways to draw polygons, poly lines, points onto the map using Cesium’s equivalent of the draw interaction in OpenLayers
+- 	Look into multi-selection of entities by drawing a box around multiple interested entities
+- Look into formats of 3D objects that Cesium uses
+- Look into getting rid of parts of the map default UI elements, such as:
+- 	//Double click interaction on entity that focuses on point --DONE--
+- Get daily, monthly, and yearly averages 
+
+
+
+

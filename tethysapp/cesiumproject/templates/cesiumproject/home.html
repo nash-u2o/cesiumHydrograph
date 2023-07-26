@@ -3,11 +3,16 @@
 
 {% block app_content %}
 
-<!-- Button trigger modal -->
-
-
 <body>
   <div id='map'></div>
+  <div id='toolbar' name='toolbar'>
+    <select id='draw-options'>
+      <option value='1'>Draw Point</option>
+      <option value='2'>Draw Line</option>
+      <option value='3'>Draw Polygon</option>
+      <option value='4'>Multi Select</option>
+    </select>
+  </div>
   <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content" id='modal-content'>
@@ -18,25 +23,44 @@
         <div class="modal-body">
           <body>
             <p id="figure"></p>
-            <p id="item-info">
-              <h6 id='id-block'></h6>
-              <h6 id='lonlat'></h6>
-            </p>
+            <div id="item-info">
+              <div class='row'>
+              <div class='column'>
+                <h6 id='id-block'></h6>
+                <h6 id='lonlat'></h6>
+                <h6 id='continent'></h6>
+                <h6 id='country'></h6>
+                <h6 id='volume'></h6>
+                <h6 id='src'></h6>
+                <h6 id='dis'></h6>
+                <h6 id='elevation'></h6>
+                <h6 id='wshd'></h6>
+              </div>
+              <div class='column'>
+                <h6 id='pLongLat'></h6>
+                <h6 id='area'></h6>
+                <h6 id='length'></h6>
+                <h6 id='dev'></h6>
+                <h6 id='res'></h6>
+                <h6 id='depth'></h6>
+                <h6 id='time'></h6>
+                <h6 id='slope'></h6>
+            </div>
+          </div>
           </body>
         </div>
         <div class="modal-footer">
+          <a id='csv-link'><button type='button' class='btn btn-default' id='csv-button' download>CSV</button></a>
+          <button type="button" class="btn btn-default" id="pdf-button">PDF</button>
           <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
   </div>
 </body>
-  
 {% endblock %}
 
-{% block app_actions %}
-  {{ block.super }}
-{% endblock %}
+{% block app_actions_override %}{% endblock %}
 
 {% block content_dependent_styles%}
   {{block.super}}
@@ -54,6 +78,7 @@
   <script>
     //Make a variable for the data that is being passed to the javascript file from the controller's context that renders this specific page
     var myData = {{ jData|safe }};
+
   </script>   
   <script src="{% static 'cesiumproject/js/main.js' %}" type="text/javascript"></script>  
 {% endblock %}

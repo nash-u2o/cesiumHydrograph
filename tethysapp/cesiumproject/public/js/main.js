@@ -535,7 +535,7 @@ $(function(){
 
   //My girlfriend came up with the rectangle vertices idea and wants credit here
     let cameraStart, cameraEnd;
-    let squareStart, cartographicSquareStart;
+    let squareStart;
     let squarePointOne, squarePointTwo;
     let rectangle;
     let dynamicPositions;

@@ -10,7 +10,7 @@
 
 $(function(){
   Cesium.Ion.defaultAccessToken='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2Y2M3NTVjOS05YmE2LTQyNmEtYjQ1MS1hODBlNWM1MmYwZTIiLCJpZCI6MTUwNTM1LCJpYXQiOjE2ODgxNTI4MzN9.yswdjP2gynH4ndTniyMFIJkCpkzpl7fePBeomQ_-WnY';
-  
+   
   //Used to send the get request
   function getValues(viewer, dict){
     //If a user selects something, it can only be a polygon or an icon. Icons always match lakes that have data, but polygons don't so we must check if they do

@@ -1,3 +1,8 @@
+//Author: Nash Euto
+//Function: Handles all of the functions and events for the main page and the Cesium map on the page
+
+
+//This project was made as a demo for a new API that is being tested in the CHL
 //To change the members of a cesium object, you have to use dot notation to access the variables
 //Often, defining new things to put into objects does not work because the fields of what you are creating already exist and should just be modified with dot notation
 //For example, instead of making a new EntityCluster and then adding it to the source, all you need to do is use dot notation to modify the entity cluster that already exists at the conception of the object 
@@ -152,6 +157,7 @@ $(function(){
 
   //Remove interactions by accessing the screenSpaceEventHandler and removing input actions. This removes the zoom in caused by a double click
   viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+  viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.RIGHT_DOWN);
   //Set right click to draw points by default
   viewer.screenSpaceEventHandler.setInputAction(pointHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
   //Remove the ability to pan the camera to prevent the user from expanding the view box beyond intended
@@ -316,8 +322,6 @@ $(function(){
     }
   });
 
-  
-
   //selectedEntityChanged is an event that fires when entities are selected OR unselected
   //Look for the class js-plotly-plot on the id. If it exists, reformatting the graph instead of generating a new one is more efficient
   viewer.selectedEntityChanged.addEventListener(function(){
@@ -334,8 +338,7 @@ $(function(){
         
       }
       //Do nothing if there is not a selected entity or if there is any other issue
-    } catch {
-    }
+    } catch {}
   });
   
   //When the window is resized, adjust the width of the plotly graph in the modal
@@ -351,8 +354,6 @@ $(function(){
     } catch {}
   });
 
-  
-  
   //When the modal is rendered, configure the graph to fit the width
   $('#exampleModal').on('shown.bs.modal', () => {
     Plotly.relayout(document.getElementById('figure'),{
@@ -419,11 +420,11 @@ $(function(){
     viewer.selectedEntity.properties['values'] = [];
   });
 
-//Handlers for the draw interactions
-let placedPointList = [];
-let movingPoint;
-let dynamicShape;
-let mode;
+  //Variables for the drawing interactions
+  let placedPointList = []; //Used to draw polygon
+  let movingPoint; //Point at mouse position
+  let dynamicShape; //Shape or line user draws
+  let mode;
 
   function pointHandler(click){
     //The position click holds is based on the view frame, not the position on the map
@@ -439,8 +440,10 @@ let mode;
     }));
   }
 
-//The following code was taken from the cesium drawing tutorial. It is possible to do, but not very straightforward so I had a hard time trying to make it myself and instead copied it. 
+  //MOST OF THIS SECTION IS NOT MY CODE
+  //The following code was taken from the cesium drawing tutorial. It is possible to do, but not very straightforward so I had a hard time trying to make it myself and instead copied it. 
 
+  //Creates a point based off of a passed position
   function createPoint(myPosition){
     const point = viewer.entities.add({
       position: myPosition,
@@ -453,6 +456,7 @@ let mode;
     return point;
   }
 
+  //Draws a line or polygon based on the mode
   function drawShape(myPositions){
     let shape;
     if(mode == "line"){
@@ -463,12 +467,12 @@ let mode;
           width: 3,
         },
       });
-    } else if(mode == "poly") {
+    } else if(mode == "poly" || mode == "square") {
       shape = viewer.entities.add({
         polygon: {
           hierarchy: myPositions,
           material: new Cesium.ColorMaterialProperty(
-            Cesium.Color.WHITE
+            Cesium.Color.WHITE.withAlpha(0.7),
           ),
         },
       })
@@ -476,7 +480,7 @@ let mode;
     return shape
   }
 
-  //Callback
+  //Handles clicks to assign polygon points
   function clickHandler(event){
     const ray = viewer.camera.getPickRay(event.position);
     const earthPosition = viewer.scene.globe.pick(ray, viewer.scene);
@@ -488,7 +492,6 @@ let mode;
         const dynamicPositions = new Cesium.CallbackProperty(function () {
           if (mode === "poly") { 
             return new Cesium.PolygonHierarchy(placedPointList);
-          
           }
           return placedPointList;
         }, false);
@@ -499,26 +502,28 @@ let mode;
     }
   }
 
-  //Callback
+  //Handles the mouse movement. 
   function moveHandler(event){
-    if(Cesium.defined(movingPoint)){
+    //Get mouse position
+    if(Cesium.defined(movingPoint)){ 
       const ray = viewer.camera.getPickRay(event.endPosition);
       const newPosition = viewer.scene.globe.pick(ray, viewer.scene);
+      //If the mouse position is defined, adjust the location of the moving point to the mouse position and adjust the placedPointList to reflect the changes
       if(Cesium.defined(newPosition)){
         movingPoint.position.setValue(newPosition);
         placedPointList.pop();
-        placedPointList.push(newPosition);
+        placedPointList.push(newPosition); //Needed because the polygon hierarchy is based on this list so it needs to change
       }
     }
   }
 
+  //Draw the polygon, remove the moving points and the dynamic shape, and reset all of the variables to undefined
   function terminate(){
     placedPointList.pop(); //pop off dynamic point
     drawShape(placedPointList);
     viewer.entities.remove(movingPoint);
     viewer.entities.remove(dynamicShape);
-    movingPoint = undefined;
-    dynamicShape = undefined;
+    movingPoint = dynamicShape = squarePointOne = squarePointTwo = undefined;
     placedPointList = [];
   }
 
@@ -526,9 +531,150 @@ let mode;
     terminate();
   }
 
+  //BACK TO MY OWN CODE
+
+  //My girlfriend came up with the rectangle vertices idea and wants credit here
+    let cameraStart, cameraEnd;
+    let squareStart, cartographicSquareStart;
+    let squarePointOne, squarePointTwo;
+    let rectangle;
+    let dynamicPositions;
+    let minPixelY, maxPixelY, minPixelX, maxPixelX;
+    
+    //Function for the callback in the squareClickHandler. Allows corners to be dynamic
+    function getCornerLocations(){
+      return [squarePointOne._position._value, movingPoint._position._value, squarePointTwo._position._value,squareStart._position._value,];
+    }
+
+    //BUG: When you left click when the multi-select is active, the two supporting points lock in their longitude or latitude and mess up the square. Selection still functions properly though
+    //BUG: Clicking again after moving the mouse throws an error
+    //NOTE: Conforms to the curvature of the globe. Not a straight rectangle so selection can get weird the further zoomed out you are
+    //Handler for the multi select interaction. Creates the points that define the corners of the selection and the polygon for the highlighting
+    function squareClickHandler(event){
+      //Get the position of the click based on the event position and the globe's ellipsoid
+      var tempEllipsoid = viewer.camera.pickEllipsoid(
+        event.position,
+        viewer.scene.globe.ellipsoid,
+      );
+      if(Cesium.defined(tempEllipsoid)){
+        cameraStart = event.position;
+        viewer.scene.screenSpaceCameraController.enableInputs = false; //Disable camera movement
+        //If squareStart, the initial click position, is undefined, create the corner points and create a polygon with a callback allowing it to have dynamic sizing
+        if(squareStart == undefined) {
+          cartographicSquareStart = Cesium.Cartographic.fromCartesian(tempEllipsoid);
+          squareStart = createPoint(tempEllipsoid);
+          squarePointOne = createPoint(tempEllipsoid); 
+          squarePointTwo = createPoint(tempEllipsoid);
+          movingPoint = createPoint(tempEllipsoid);
+          dynamicPositions = new Cesium.CallbackProperty(function() { //Callback function is called a lot. Don't know what it's based off of but is fast enough for having a smooth selection polygon
+            return new Cesium.PolygonHierarchy(getCornerLocations());
+          }, false);
+          dynamicShape = drawShape(dynamicPositions);
+        } else {
+          //If it is the second click, get all of the points within the users rectangle
+          const entityArray = viewer.dataSources._dataSources[0]._entityCollection._entities._array;
+          for(let i = 0; i < entityArray.length; i++){ //Inefficient loop through every entity, but it works
+            var cartesian = Cesium.Cartesian3.fromElements(entityArray[i]._position._value['x'], entityArray[i]._position._value['y'], entityArray[i]._position._value['z']);
+            var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+            //If the cartographic points of the entity fall within the rectangle, log them for now
+            if(Cesium.Rectangle.contains(rectangle, cartographic)){
+              console.log(entityArray[i]);
+            }
+          }
+          squareTerminate(); //Remove entities and reset values to undefined
+          viewer.scene.screenSpaceCameraController.enableInputs = true; //Allow input again
+        }
+      }
+    }
+
+    //Handles when the mouse moves. If it is on a defined point on the map, determine point location and reassign point positions
+    let topRight, topLeft, bottomRight, bottomLeft;
+    function squareMoveHandler(event){
+      //Get mouse position
+      if(Cesium.defined(movingPoint)){
+        var tempEllipsoid = viewer.camera.pickEllipsoid(
+          event.endPosition,
+          viewer.scene.globe.ellipsoid,
+        );
+        //If position is defined, determine dimensions and how to structure the selection rectangle
+        if(Cesium.defined(tempEllipsoid)){
+          movingPoint.position.setValue(tempEllipsoid); //Set moving point to mouse position
+          cameraEnd = event.endPosition;
+          
+          if(cameraEnd['x'] > cameraStart['x']){
+            maxPixelX = cameraEnd['x'];
+            minPixelX = cameraStart['x'];
+          } else {
+            maxPixelX = cameraStart['x'];
+            minPixelX = cameraEnd['x'];
+          }
+          if(cameraEnd['y'] > cameraStart['y']){
+            maxPixelY = cameraEnd['y'];
+            minPixelY = cameraStart['y'];
+          } else {
+            maxPixelY = cameraStart['y'];
+            minPixelY = cameraEnd['y'];
+          }
+          topRight = viewer.camera.pickEllipsoid(
+            new Cesium.Cartesian2(maxPixelX, minPixelY),
+            viewer.scene.globe.ellipsoid
+          );
+          topLeft = viewer.camera.pickEllipsoid(
+            new Cesium.Cartesian2(minPixelX, minPixelY),
+            viewer.scene.globe.ellipsoid
+          );
+          bottomRight = viewer.camera.pickEllipsoid(
+            new Cesium.Cartesian2(maxPixelX, maxPixelY),
+            viewer.scene.globe.ellipsoid
+          );
+          bottomLeft = viewer.camera.pickEllipsoid(
+            new Cesium.Cartesian2(minPixelX, maxPixelY),
+            viewer.scene.globe.ellipsoid
+          );
+          if(Cesium.defined(topRight) && Cesium.defined(topLeft) && Cesium.defined(bottomRight) && Cesium.defined(bottomLeft)){
+            //Check to see what corner the mouse is on. Based on the mouse, assign the other corners of the rectangle
+            if(Cesium.Cartesian3.equals(tempEllipsoid, topRight)){
+              squarePointOne.position.setValue(bottomRight);
+              squarePointTwo.position.setValue(topLeft);
+            }
+            if(Cesium.Cartesian3.equals(tempEllipsoid, topLeft)){
+              squarePointOne.position.setValue(topRight);
+              squarePointTwo.position.setValue(bottomLeft);
+            }
+            if(Cesium.Cartesian3.equals(tempEllipsoid, bottomRight)){
+              squarePointOne.position.setValue(topRight);
+              squarePointTwo.position.setValue(bottomLeft);
+            }
+            if(Cesium.Cartesian3.equals(tempEllipsoid, bottomLeft)){
+              squarePointOne.position.setValue(topLeft);
+              squarePointTwo.position.setValue(bottomRight);
+            }
+            //Creeate a rectangle based off of the longitude and latitude of the corners of the rectangle. Represents area inside selection rectangle when user draws
+            var northwest = Cesium.Cartographic.fromCartesian(topLeft);
+            var southeast = Cesium.Cartographic.fromCartesian(bottomRight);
+            rectangle = new Cesium.Rectangle(northwest.longitude, southeast.latitude, southeast.longitude, northwest.latitude);
+          }
+        }
+      }
+    }
+
+    //Remove the point entities and the polygon from the map. Set all of the values to undefined
+    function squareTerminate(){
+      viewer.entities.remove(dynamicShape);
+      viewer.entities.remove(squareStart);
+      viewer.entities.remove(squarePointOne);
+      viewer.entities.remove(squarePointTwo);
+      viewer.entities.remove(movingPoint);
+      squareStart = squarePoint = squarePointOne = squarePointTwo = movingPoint = rectangle = dynamicShape = cartographicSquareStart = undefined;
+    }
+
+  //When an option in the dropdown on the top left of the map is selected, run through the switch and assign the necessary click interactions
   $('#draw-options').change(function(){
     switch($(this).val()){
       case '1':
+        if(placedPointList.length != 0){
+          terminate();
+        }
         viewer.screenSpaceEventHandler.setInputAction(pointHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
         viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
         viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
@@ -551,8 +697,17 @@ let mode;
         viewer.screenSpaceEventHandler.setInputAction(moveHandler, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
         viewer.screenSpaceEventHandler.setInputAction(middleHandler, Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
         break;
+      case '4':
+        if(placedPointList.length != 0){
+          terminate();
+        }
+        mode = 'square';
+        viewer.screenSpaceEventHandler.setInputAction(squareClickHandler, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+        viewer.screenSpaceEventHandler.setInputAction(squareMoveHandler, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+        viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
     }
   })
 });
   
+
   

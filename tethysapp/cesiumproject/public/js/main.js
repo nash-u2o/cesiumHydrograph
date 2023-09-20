@@ -654,7 +654,6 @@ $(function(){
     viewer.selectedEntity = undefined;
   }
 
-  //My girlfriend came up with the rectangle vertices idea and insisted on getting credit here
   //These variables are all used for the bounds of the users drawn rectangle
     let cameraStart, cameraEnd;
     let squareStart;
